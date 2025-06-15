@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neolink - Formulario de Pago</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- Agregamos EmailJS para el envío de correos -->
+    <script src="https://cdn.jsdelivr.net/npm/emailjs-com@3.2.0/dist/email.min.js"></script>
+    <style>
+        /* Estilos previos se mantienen igual */
+        :root {
+            --primary-color: #7e22ce;
+            --secondary-color: #6b21a8;
+            --accent-color: #a855f7;
+            --text-color: #1f2937;
+            --border-color: #e5e7eb;
+            --highlight-color: #f3e8ff;
+            --light-purple: #faf7ff;
+            --success-color: #10b981;
+            --error-color: #ef4444;
+            --warning-color: #f59e0b;
+        }
+        
+        * {
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 480px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, var(--light-purple) 0%, #f0f9ff 100%);
+            color: var(--text-color);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            animation: fadeInDown 0.8s ease;
+        }
+        
+        .logo {
+            width: 180px;
+            height: 60px;
+            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            margin: 0 auto 15px;
+            box-shadow: 0 8px 25px rgba(126, 34, 206, 0.3);
+        }
+        
+        .payment-form {
+            background: white;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            animation: fadeInUp 0.8s ease;
+            backdrop-filter: blur(10px);
+        }
+        
+        .form-section {
+            margin-bottom: 25px;
+        }
+        
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--primary-color);
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid var(--highlight-color);
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+            position: relative;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: var(--text-color);
+            font-weight: 500;
+        }
+        
+        .required::after {
+            content: ' *';
+            color: var(--error-color);
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            background-color: white;
+        }
+        
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(126, 34, 206, 0.1);
+            transform: translateY(-1px);
+        }
+        
+        input.error {
+            border-color: var(--error-color);
+            animation: shake 0.5s ease-in-out;
+        }
+        
+        .error-message {
+            color: var(--error-color);
+            font-size: 12px;
+            margin-top: 4px;
+            display: none;
+        }
+        
+        .amount-display {
+            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            margin: 25px 0;
+            animation: pulse 2s infinite;
+        }
+        
+        .amount-value {
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .amount-label {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        
+        .options-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 12px;
+            margin: 20px 0;
+        }
+        
+        .option {
+            padding: 12px 16px;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: center;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            background: white;
+        }
+        
+        .option:hover {
+            border-color: var(--primary-color);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(126, 34, 206, 0.2);
+        }
+        
+        .option.selected {
+            border-color: var(--primary-color);
+            background: var(--highlight-color);
+            color: var(--primary-color);
+            transform: translateY(-1px);
+        }
+        
+        .installments-container {
+            display: none;
+            margin-top: 20px;
+            padding: 20px;
+            background: var(--light-purple);
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+        }
+        
+        .installments-container.show {
+            display: block;
+            animation: slideDown 0.4s ease;
+        }
+        
+        .installments-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .installment-option {
+            padding: 10px 8px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: white;
+            font-size: 12px;
+        }
+        
+        .installment-option:hover {
+            border-color: var(--accent-color);
+            background: var(--highlight-color);
+        }
+        
+        .installment-option.selected {
+            background: var(--primary-color);
+            border-color: var(--primary-color);
+            color: white;
+            font-weight: 600;
+        }
+        
+        .card-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        
+        .input-icon {
+            position: absolute;
+            right: 12px;
+            top: 38px;
+            font-size: 18px;
+            color: var(--border-color);
+        }
+        
+        .btn-pagar {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            border: none;
+            padding: 16px;
+            width: 100%;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 30px;
+            transition: all 0.3s;
+            box-shadow: 0 8px 25px rgba(126, 34, 206, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .btn-pagar:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 35px rgba(126, 34, 206, 0.4);
+        }
+        
+        .btn-pagar:active {
+            transform: translateY(0);
+        }
+        
+        .btn-pagar:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .loading {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top: 2px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        .success-message {
+            background: var(--success-color);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            display: none;
+            animation: slideDown 0.5s ease;
+        }
+        
+        /* Animations */
+        @keyframes fadeInDown {
+            from { opacity: 0; transform: translateY(-30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+            100% { transform: scale(1); }
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Responsive */
+        @media (max-width: 480px) {
+            body {
+                padding: 15px;
+            }
+            
+            .payment-form {
+                padding: 20px;
+            }
+            
+            .installments-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+            
+            .card-row {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">NEOLINK</div>
+        <p style="margin: 0; color: #6b7280; font-size: 14px;">Sistema de Pagos Seguro</p>
+    </div>
+    
+    <div class="payment-form">
+        <div class="form-section">
+            <div class="section-title">Información Personal</div>
+            
+            <div class="form-group">
+                <label class="required">Nombre Completo</label>
+                <input type="text" id="nombre" placeholder="Ingrese su nombre completo">
+                <div class="error-message" id="nombre-error">Este campo es obligatorio</div>
+            </div>
+            
+            <div class="form-group">
+                <label class="required">Correo Electrónico</label>
+                <input type="email" id="email" placeholder="ejemplo@correo.com">
+                <div class="error-message" id="email-error">Ingrese un correo válido</div>
+            </div>
+            
+            <div class="form-group">
+                <label>NIT (Opcional)</label>
+                <input type="text" id="nit" placeholder="Número de Identificación Tributaria">
+            </div>
+        </div>
+        
+        <div class="amount-display">
+            <div class="amount-value">Q58.00</div>
+            <div class="amount-label">Monto Total a Pagar</div>
+        </div>
+        
+        <div class="form-section">
+            <div class="section-title">Tipo de Pago</div>
+            <div class="options-row">
+                <div class="option" onclick="selectPaymentType(this, 'Cuotas', true)">
+                    💳 Cuotas
+                </div>
+                <div class="option" onclick="selectPaymentType(this, 'Puntos', false)">
+                    ⭐ Puntos
+                </div>
+                <div class="option selected" onclick="selectPaymentType(this, 'Contado', false)">
+                    💰 Contado
+                </div>
+            </div>
+            
+            <div id="installments-container" class="installments-container">
+                <label><strong>Seleccione el número de meses:</strong></label>
+                <div class="installments-grid" id="installments-grid"></div>
+                <div style="margin-top: 10px; font-size: 12px; color: #6b7280;">
+                    * Aplican intereses según el plazo seleccionado
+                </div>
+            </div>
+        </div>
+        
+        <div class="form-section">
+            <div class="section-title">Método de Pago</div>
+            <div class="options-row">
+                <div class="option selected" onclick="selectPaymentMethod(this, 'Pago rápido')">
+                    ⚡ Pago Rápido
+                </div>
+                <div class="option" onclick="selectPaymentMethod(this, 'VISA')">
+                    💳 VISA
+                </div>
+                <div class="option" onclick="selectPaymentMethod(this, 'Mastercard')">
+                    💳 Mastercard
+                </div>
+            </div>
+        </div>
+        
+        <div class="form-section">
+            <div class="section-title">Datos de la Tarjeta</div>
+            
+            <div class="form-group">
+                <label class="required">Número de Tarjeta</label>
+                <input type="text" id="card-number" placeholder="1234 5678 9012 3456" maxlength="19">
+                <span class="input-icon">💳</span>
+                <div class="error-message" id="card-error">Número de tarjeta inválido</div>
+            </div>
+            
+            <div class="card-row">
+                <div class="form-group">
+                    <label class="required">Fecha de Expiración</label>
+                    <input type="text" id="expiry" placeholder="MM/AA" maxlength="5">
+                    <div class="error-message" id="expiry-error">Fecha inválida</div>
+                </div>
+                <div class="form-group">
+                    <label class="required">CVV</label>
+                    <input type="text" id="cvv" placeholder="123" maxlength="4">
+                    <span class="input-icon">🔒</span>
+                    <div class="error-message" id="cvv-error">CVV inválido</div>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label class="required">Nombre en la Tarjeta</label>
+                <input type="text" id="card-name" placeholder="Como aparece en la tarjeta">
+                <div class="error-message" id="card-name-error">Este campo es obligatorio</div>
+            </div>
+        </div>
+        
+        <button class="btn-pagar" onclick="procesarFormulario()">
+            <span class="btn-text">Procesar Pago</span>
+            <div class="loading">
+                <div class="spinner"></div>
+            </div>
+        </button>
+        
+        <div class="success-message" id="success-message">
+            ✅ ¡Pago procesado exitosamente! Se ha generado su comprobante.
+        </div>
+    </div>
+
+    <script>
+        const { jsPDF } = window.jspdf;
+        let paymentType = "Contado";
+        let paymentMethod = "Pago rápido";
+        let selectedInstallment = null;
+
+        // Inicializar EmailJS (debes reemplazar estos valores con los tuyos)
+        (function() {
+            emailjs.init("YcbkDNRrxeatuug6p"); // Reemplaza con tu User ID de EmailJS
+        })();
+
+        // Formatear número de tarjeta
+        document.getElementById('card-number').addEventListener('input', function(e) {
+            let value = e.target.value.replace(/\s/g, '').replace(/[^0-9]/gi, '');
+            let formattedValue = value.match(/.{1,4}/g)?.join(' ') || value;
+            e.target.value = formattedValue;
+        });
+
+        // Formatear fecha de expiración
+        document.getElementById('expiry').addEventListener('input', function(e) {
+            let value = e.target.value.replace(/\D/g, '');
+            if (value.length >= 2) {
+                value = value.substring(0, 2) + '/' + value.substring(2, 4);
+            }
+            e.target.value = value;
+        });
+
+        // Solo números en CVV
+        document.getElementById('cvv').addEventListener('input', function(e) {
+            e.target.value = e.target.value.replace(/[^0-9]/g, '');
+        });
+
+        // Generar opciones de cuotas
+        function generateInstallmentOptions() {
+            const grid = document.getElementById('installments-grid');
+            grid.innerHTML = '';
+            
+            const installmentOptions = [3, 6, 9, 12, 18, 24];
+            
+            installmentOptions.forEach(months => {
+                const monthlyAmount = (58 * (1 + months * 0.02) / months).toFixed(2);
+                const option = document.createElement('div');
+                option.className = 'installment-option';
+                option.innerHTML = `<div><strong>${months}</strong></div><div style="font-size: 10px;">Q${monthlyAmount}/mes</div>`;
+                option.onclick = function() {
+                    document.querySelectorAll('.installment-option').forEach(opt => {
+                        opt.classList.remove('selected');
+                    });
+                    this.classList.add('selected');
+                    selectedInstallment = months;
+                };
+                grid.appendChild(option);
+            });
+        }
+
+        function selectPaymentType(element, type, showInstallments) {
+            const container = element.parentElement;
+            container.querySelectorAll('.option').forEach(opt => {
+                opt.classList.remove('selected');
+            });
+            
+            element.classList.add('selected');
+            paymentType = type;
+            
+            const installmentsContainer = document.getElementById('installments-container');
+            if (showInstallments) {
+                installmentsContainer.classList.add('show');
+                if (!document.getElementById('installments-grid').innerHTML) {
+                    generateInstallmentOptions();
+                }
+            } else {
+                installmentsContainer.classList.remove('show');
+                selectedInstallment = null;
+            }
+        }
+
+        function selectPaymentMethod(element, method) {
+            const container = element.parentElement;
+            container.querySelectorAll('.option').forEach(opt => {
+                opt.classList.remove('selected');
+            });
+            
+            element.classList.add('selected');
+            paymentMethod = method;
+        }
+
+        function validateField(fieldId, validator, errorMsg) {
+            const field = document.getElementById(fieldId);
+            const errorDiv = document.getElementById(fieldId + '-error');
+            
+            if (!validator(field.value)) {
+                field.classList.add('error');
+                errorDiv.style.display = 'block';
+                errorDiv.textContent = errorMsg;
+                return false;
+            } else {
+                field.classList.remove('error');
+                errorDiv.style.display = 'none';
+                return true;
+            }
+        }
+
+        function validateForm() {
+            let isValid = true;
+            
+            // Validar nombre
+            isValid &= validateField('nombre', 
+                value => value.trim().length >= 2, 
+                'El nombre debe tener al menos 2 caracteres'
+            );
+            
+            // Validar email
+            isValid &= validateField('email', 
+                value => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value), 
+                'Ingrese un correo electrónico válido'
+            );
+            
+            // Validar número de tarjeta
+            isValid &= validateField('card-number', 
+                value => value.replace(/\s/g, '').length >= 13, 
+                'Número de tarjeta incompleto'
+            );
+            
+            // Validar fecha de expiración
+            isValid &= validateField('expiry', 
+                value => {
+                    const [month, year] = value.split('/');
+                    const currentYear = new Date().getFullYear() % 100;
+                    const currentMonth = new Date().getMonth() + 1;
+                    return month >= 1 && month <= 12 && 
+                           year >= currentYear && 
+                           (year > currentYear || month >= currentMonth);
+                }, 
+                'Fecha de expiración inválida'
+            );
+            
+            // Validar CVV
+            isValid &= validateField('cvv', 
+                value => value.length >= 3, 
+                'CVV debe tener al menos 3 dígitos'
+            );
+            
+            // Validar nombre en tarjeta
+            isValid &= validateField('card-name', 
+                value => value.trim().length >= 2, 
+                'Nombre en tarjeta es obligatorio'
+            );
+            
+            // Validar cuotas si está seleccionado
+            if (paymentType === "Cuotas" && !selectedInstallment) {
+                alert('Por favor seleccione el número de meses para las cuotas');
+                return false;
+            }
+            
+            return isValid;
+        }
+
+        function recopilarDatosParaEmail() {
+            const now = new Date();
+            return {
+                nombre: document.getElementById('nombre').value,
+                email: document.getElementById('email').value,
+                nit: document.getElementById('nit').value || 'No proporcionado',
+                monto: 'Q58.00',
+                tipo_pago: paymentType + (selectedInstallment ? ` (${selectedInstallment} meses)` : ''),
+                metodo_pago: paymentMethod,
+                tarjeta: '•••• •••• •••• ' + document.getElementById('card-number').value.slice(-4),
+                titular: document.getElementById('card-name').value,
+                fecha: now.toLocaleDateString() + ' ' + now.toLocaleTimeString(),
+                fecha_envio: now.toISOString()
+            };
+        }
+
+        async function enviarEmail(datosPago) {
+            try {
+                // Configuración para EmailJS (debes tener una plantilla configurada)
+                const templateParams = {
+                    to_email: datosPago.email,
+                    to_name: datosPago.nombre,
+                    from_name: "Neolink Pagos",
+                    subject: "Confirmación de Pago",
+                    message: `
+                        <h2>Confirmación de Pago</h2>
+                        <p>Hola ${datosPago.nombre},</p>
+                        <p>Hemos recibido tu pago exitosamente. Aquí están los detalles:</p>
+                        <ul>
+                            <li><strong>Monto:</strong> ${datosPago.monto}</li>
+                            <li><strong>Tipo de pago:</strong> ${datosPago.tipo_pago}</li>
+                            <li><strong>Método:</strong> ${datosPago.metodo_pago}</li>
+                            <li><strong>Tarjeta terminada en:</strong> ${datosPago.tarjeta}</li>
+                            <li><strong>Fecha:</strong> ${datosPago.fecha}</li>
+                        </ul>
+                        <p>Gracias por tu compra. Adjunto encontrarás el comprobante de pago.</p>
+                        <p>Atentamente,<br>El equipo de Neolink</p>
+                    `,
+                    datos_pago: JSON.stringify(datosPago, null, 2)
+                };
+
+                // Enviar el email (service_id y template_id deben ser los tuyos)
+                const response = await emailjs.send(
+                    'service_j5hkhcb', // Reemplaza con tu Service ID
+                    'template_aos323h', // Reemplaza con tu Template ID
+                    templateParams
+                );
+                
+                console.log('Email enviado con éxito:', response);
+                return true;
+            } catch (error) {
+                console.error('Error al enviar email:', error);
+                return false;
+            }
+        }
+
+        async function procesarFormulario() {
+            if (!validateForm()) {
+                return;
+            }
+            
+            const button = document.querySelector('.btn-pagar');
+            const btnText = document.querySelector('.btn-text');
+            const loading = document.querySelector('.loading');
+            
+            // Mostrar loading
+            button.disabled = true;
+            btnText.style.display = 'none';
+            loading.style.display = 'block';
+            
+            try {
+                // Recopilar datos para el email
+                const datosPago = recopilarDatosParaEmail();
+                
+                // Generar comprobante
+                const pdfBlob = await generarComprobante();
+                
+                // Enviar email (simulado en este ejemplo)
+                const emailEnviado = await enviarEmail(datosPago);
+                
+                if (!emailEnviado) {
+                    console.warn("El email no pudo ser enviado, pero el pago se procesó");
+                }
+                
+                // Mostrar éxito
+                document.getElementById('success-message').style.display = 'block';
+                document.getElementById('success-message').textContent = 
+                    emailEnviado 
+                    ? '✅ ¡Pago procesado exitosamente! Se ha enviado el comprobante a tu correo.'
+                    : '✅ ¡Pago procesado! (No se pudo enviar el correo, pero tu pago fue exitoso)';
+                
+                // Scroll al mensaje de éxito
+                document.getElementById('success-message').scrollIntoView({ 
+                    behavior: 'smooth' 
+                });
+            } catch (error) {
+                console.error('Error en el procesamiento:', error);
+                alert('Ocurrió un error al procesar el pago. Por favor intenta nuevamente.');
+            } finally {
+                // Restaurar botón
+                button.disabled = false;
+                btnText.style.display = 'block';
+                loading.style.display = 'none';
+            }
+        }
+
+        async function generarComprobante() {
+            return new Promise((resolve) => {
+                const doc = new jsPDF();
+                const now = new Date();
+                
+                // Encabezado
+                doc.setFillColor(126, 34, 206);
+                doc.rect(0, 0, 210, 40, 'F');
+                
+                doc.setTextColor(255, 255, 255);
+                doc.setFontSize(24);
+                doc.text('NEOLINK', 20, 25);
+                
+                doc.setFontSize(12);
+                doc.text('Comprobante de Pago', 20, 32);
+                
+                // Resetear color
+                doc.setTextColor(40, 40, 40);
+                
+                // Información del pago
+                let y = 60;
+                doc.setFontSize(16);
+                doc.text('DETALLES DEL PAGO', 20, y);
+                
+                y += 15;
+                doc.setFontSize(12);
+                
+                // Datos del usuario
+                const datos = [
+                    ['Nombre:', document.getElementById('nombre').value],
+                    ['Email:', document.getElementById('email').value],
+                    ['NIT:', document.getElementById('nit').value || 'No proporcionado'],
+                    ['Monto:', 'Q58.00'],
+                    ['Tipo de pago:', paymentType + (selectedInstallment ? ` (${selectedInstallment} meses)` : '')],
+                    ['Método:', paymentMethod],
+                    ['Tarjeta:', '•••• •••• •••• ' + document.getElementById('card-number').value.slice(-4)],
+                    ['Titular:', document.getElementById('card-name').value],
+                    ['Fecha:', now.toLocaleDateString() + ' ' + now.toLocaleTimeString()]
+                ];
+                
+                datos.forEach(([label, value]) => {
+                    doc.text(label, 20, y);
+                    doc.text(value, 80, y);
+                    y += 8;
+                });
+                
+                // Pie de página
+                doc.setTextColor(100, 100, 100);
+                doc.setFontSize(10);
+                doc.text('Este es un comprobante generado automáticamente.', 20, 250);
+                doc.text('Para consultas contacte a soporte@neolink.com', 20, 260);
+                
+                // Generar blob del PDF
+                const pdfBlob = doc.output('blob');
+                
+                // Guardar PDF localmente
+                const filename = `Neolink_Pago_${now.getTime()}.pdf`;
+                doc.save(filename);
+                
+                resolve(pdfBlob);
+            });
+        }
+
+        // Inicializar
+        document.addEventListener('DOMContentLoaded', function() {
+            // Remover errores al escribir
+            document.querySelectorAll('input').forEach(input => {
+                input.addEventListener('input', function() {
+                    if (this.classList.contains('error')) {
+                        this.classList.remove('error');
+                        const errorDiv = document.getElementById(this.id + '-error');
+                        if (errorDiv) {
+                            errorDiv.style.display = 'none';
+                        }
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
